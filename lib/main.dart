@@ -5,8 +5,13 @@ import 'package:personal_expenses/widgets/new_transaction.dart';
 import 'package:personal_expenses/models/transactions.dart';
 import 'package:personal_expenses/widgets/transactions_list.dart';
 import 'package:personal_expenses/widgets/chart.dart';
+import 'package:flutter/services.dart';
 
 void main() {
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitDown,
+    DeviceOrientation.portraitUp
+  ]);
   runApp(MyApp());
 }
 
@@ -15,11 +20,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-        errorColor: Colors.redAccent,
-        accentColor: Colors.black45,
-        fontFamily: 'OpenSans'
-      ),
+          primarySwatch: Colors.blue,
+          errorColor: Colors.redAccent,
+          accentColor: Colors.black45,
+          fontFamily: 'OpenSans'),
       title: 'Personal Expenses',
       home: MyHomePage(),
     );
@@ -49,8 +53,11 @@ class _MyHomePageState extends State<MyHomePage> {
     ),
   ];
 
-  List<Transactions> get _recentTransactions{
-    return _userTransactions.where((tx){ //It's iterable but
+  bool _showChart = false;
+
+  List<Transactions> get _recentTransactions {
+    return _userTransactions.where((tx) {
+      //It's iterable but
       return tx.date.isAfter(
         DateTime.now().subtract(
           Duration(days: 7),
@@ -59,7 +66,8 @@ class _MyHomePageState extends State<MyHomePage> {
     }).toList();
   }
 
-  void _addUserTransactions(String txTitle, double txAmount, DateTime choosenDate) {
+  void _addUserTransactions(
+      String txTitle, double txAmount, DateTime choosenDate) {
     final newTx = Transactions(
       id: DateTime.now().toString(),
       title: txTitle,
@@ -77,14 +85,14 @@ class _MyHomePageState extends State<MyHomePage> {
         context: ctx,
         builder: (_) {
           return GestureDetector(
-            onTap: (){},
+            onTap: () {},
             child: NewTransaction(_addUserTransactions),
             behavior: HitTestBehavior.opaque,
           );
         });
   }
 
-  void _deleteTransaction(String id){
+  void _deleteTransaction(String id) {
     setState(() {
       _userTransactions.removeWhere((tx) {
         return tx.id == id;
@@ -94,25 +102,56 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final isLandscape = mediaQuery.orientation == Orientation.landscape;
+    final appBar = AppBar(
+      //backgroundColor: Colors.pink[100],
+      backgroundColor: Theme.of(context).primaryColorDark,
+      title: Text('Personal Expenses'),
+      actions: [
+        IconButton(
+          onPressed: () => _startAddNewTransaction(context),
+          icon: Icon(Icons.add),
+        ),
+      ],
+    );
+    final txListWidget = Container(
+      height: (mediaQuery.size.height -
+          appBar.preferredSize.height) *
+          0.7,
+      child: TransactionsList(_userTransactions, _deleteTransaction),
+    );
     return Scaffold(
-      appBar: AppBar(
-        //backgroundColor: Colors.pink[100],
-        backgroundColor: Theme.of(context).primaryColorDark,
-        title: Text('Personal Expenses'),
-        actions: [
-          IconButton(
-            onPressed: () => _startAddNewTransaction(context),
-            icon: Icon(Icons.add),
-          ),
-        ],
-      ),
+      appBar: appBar,
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           // mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            Chart(_recentTransactions),
-            TransactionsList(_userTransactions, _deleteTransaction),
+            if(isLandscape) Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('Show Chart'),
+                Switch(value: _showChart, onChanged: (val){
+                  setState(() {
+                    _showChart = val;
+                  });
+                })
+              ],
+            ) ,
+            if(!isLandscape) Container(
+              height: (mediaQuery.size.height -
+                  appBar.preferredSize.height - mediaQuery.padding.top) *
+                  0.3,
+              child: Chart(_recentTransactions),
+            ),
+            if(!isLandscape) txListWidget,
+            if(isLandscape) _showChart ? Container(
+              height: (mediaQuery.size.height -
+                      appBar.preferredSize.height - mediaQuery.padding.top) *
+                  0.7,
+              child: Chart(_recentTransactions),
+            ) : txListWidget,
           ],
         ),
       ),
